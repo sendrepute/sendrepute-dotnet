@@ -1,0 +1,13 @@
+{
+  "name": "SendRepute.MailKit",
+  "version": "0.1.0",
+  "framework": "net8.0",
+  "dependency": "MailKit 4.18.0",
+  "endpoint": "https://www.sendrepute.com/api/v1/classify",
+  "entryPoints": [
+    "SendReputeMailAdapter.AnalyzeAsync",
+    "SendReputeMailAdapter.AnalyzeThenSend",
+    "SendReputeMailAdapter.AnalyzeThenSendAsync"
+  ],
+  "distribution": "dist/sendrepute-mailkit-0.1.0-source.zip"
+}
