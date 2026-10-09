@@ -10,6 +10,7 @@ var files = new[]
     "src/SendRepute.MailKit/Contracts.cs",
     "src/SendRepute.MailKit/MimeNormalizer.cs",
     "src/SendRepute.MailKit/SendReputeClient.cs",
+    "src/SendRepute.MailKit/CustomerServices.Generated.cs",
     "src/SendRepute.MailKit/SendReputeMailAdapter.cs",
     "scripts/Package/Package.csproj",
     "scripts/Package/Program.cs"
