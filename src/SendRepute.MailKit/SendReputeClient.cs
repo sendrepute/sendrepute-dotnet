@@ -95,6 +95,71 @@ public sealed class SendReputeClient : IDisposable
         }
     }
 
+    /// <summary>Execute a fixed customer API operation without retries. Mutations require per-call consent.</summary>
+    public async Task<JsonElement> RequestServiceAsync(string operation, JsonElement? body = null,
+        IReadOnlyDictionary<string, string>? path = null, IReadOnlyDictionary<string, string>? query = null,
+        bool authorizeMutation = false, CancellationToken cancellationToken = default)
+    {
+        using var contract = JsonDocument.Parse(CustomerServices.Contract);
+        if (!contract.RootElement.TryGetProperty(operation, out var service))
+            throw new SendReputeException("invalid_operation", "Unknown customer operation.");
+        var method = service.GetProperty("method").GetString()!;
+        if (method != "GET" && !authorizeMutation)
+            throw new SendReputeException("consent_required", "Explicit operation authorization is required.");
+        var parameters = service.GetProperty("path_parameters").EnumerateArray().Select(v => v.GetString()!).ToArray();
+        path ??= new Dictionary<string, string>();
+        query ??= new Dictionary<string, string>();
+        if (path.Count != parameters.Length || parameters.Any(key => !path.ContainsKey(key)))
+            throw new SendReputeException("invalid_path", "Path parameters do not match the operation.");
+        var route = service.GetProperty("path").GetString()!;
+        foreach (var key in parameters)
+        {
+            var value = path[key];
+            if (string.IsNullOrEmpty(value) || value.Length > 256 || value is "." or "..")
+                throw new SendReputeException("invalid_path", "Invalid path parameter.");
+            route = route.Replace("{" + key + "}", Uri.EscapeDataString(value));
+        }
+        var allowed = service.GetProperty("query").EnumerateArray().Select(v => v.GetString()!).ToHashSet();
+        if (query.Keys.Any(key => !allowed.Contains(key)))
+            throw new SendReputeException("invalid_query", "Unsupported query parameter.");
+        if (query.Count > 0) route += "?" + string.Join("&", query.Select(pair =>
+            Uri.EscapeDataString(pair.Key) + "=" + Uri.EscapeDataString(pair.Value)));
+        if (body.HasValue && (method == "GET" || body.Value.ValueKind != JsonValueKind.Object))
+            throw new SendReputeException("invalid_body", "This operation does not accept that body.");
+        if (!body.HasValue && method is "POST" or "PUT" or "PATCH")
+            body = JsonSerializer.SerializeToElement(new Dictionary<string, object>());
+        using var request = new HttpRequestMessage(new HttpMethod(method), "https://www.sendrepute.com/api" + route);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiToken);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        if (body.HasValue)
+        {
+            var payload = JsonSerializer.SerializeToUtf8Bytes(body.Value);
+            if (payload.Length > MaxPayloadBytes)
+                throw new SendReputeException("input_too_large", "Request exceeds the byte limit.");
+            request.Content = new ByteArrayContent(payload);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        }
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(options.RequestTimeout);
+        try
+        {
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token).ConfigureAwait(false);
+            if ((int)response.StatusCode is >= 300 and < 400)
+                throw new SendReputeException("redirect_refused", "Redirect refused.");
+            if (!response.IsSuccessStatusCode)
+                throw new SendReputeException($"http_{(int)response.StatusCode}", "Service request rejected.");
+            if (response.StatusCode == HttpStatusCode.NoContent)
+                return JsonSerializer.SerializeToElement<object?>(null);
+            await using var stream = await response.Content.ReadAsStreamAsync(deadline.Token).ConfigureAwait(false);
+            var bytes = await ReadBoundedAsync(stream, deadline.Token).ConfigureAwait(false);
+            using var result = JsonDocument.Parse(bytes);
+            return result.RootElement.Clone();
+        }
+        catch (JsonException) { throw new SendReputeException("invalid_response", "Invalid service response."); }
+        catch (HttpRequestException) { throw new SendReputeException("transport_error", "Service transport failed."); }
+        catch (OperationCanceledException) { throw new SendReputeException("request_cancelled", "Service request timed out or was cancelled."); }
+    }
+
     private static ClassificationReceipt ParseReceipt(byte[] bytes)
     {
         try

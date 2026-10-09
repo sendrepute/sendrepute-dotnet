@@ -18,7 +18,7 @@ var files = new[]
 var root = FindRoot();
 var outputDirectory = Path.Combine(root, "dist");
 Directory.CreateDirectory(outputDirectory);
-var output = Path.Combine(outputDirectory, "sendrepute-mailkit-0.1.0-source.zip");
+var output = Path.Combine(outputDirectory, "sendrepute-mailkit-0.1.1-source.zip");
 var temporary = output + ".tmp";
 File.Delete(temporary);
 
@@ -32,7 +32,7 @@ using (var archive = ZipFile.Open(temporary, ZipArchiveMode.Create))
         var info = new FileInfo(source);
         if (!info.Exists || info.Attributes.HasFlag(FileAttributes.ReparsePoint))
             throw new InvalidOperationException($"{relative} is missing or is a link.");
-        var entry = archive.CreateEntry($"sendrepute-mailkit-0.1.0/{relative.Replace('\\', '/')}", CompressionLevel.SmallestSize);
+        var entry = archive.CreateEntry($"sendrepute-mailkit-0.1.1/{relative.Replace('\\', '/')}", CompressionLevel.SmallestSize);
         entry.LastWriteTime = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
         using var input = File.OpenRead(source);
         using var destination = entry.Open();

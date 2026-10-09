@@ -6,7 +6,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <PackageId>SendRepute.MailKit</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>SendRepute</Authors>
     <Description>Explicit paid pre-send classification adapter for MailKit and MimeKit.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

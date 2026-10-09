@@ -1,8 +1,21 @@
-> **Standalone source distribution:** this repository contains the integration runtime, documentation, and source packager. Upstream workspace/CMS/production-normalizer regression suites are deliberately not distributed here because they depend on private server code or isolated platform fixtures. Testing commands and historical verification evidence below describe upstream maintainer validation, not a self-contained test suite in this source-only checkout. No third-party registry publication is implied.
-
 # SendRepute MailKit adapter
 
-`SendRepute.MailKit` 0.1.0 is a .NET 8+ source package for explicit paid
+## Customer services
+
+`SendReputeClient.RequestServiceAsync` supports all 49 customer API operations,
+independently of the existing mail-send adapter:
+
+```csharp
+var account = await client.RequestServiceAsync("customerGetAccount");
+```
+
+Supply the operation's `body`, `path` and `query` fields as named arguments.
+Every mutation requires `authorizeMutation: true` on that request. Obtain and
+review a server quote and include expected-price fields before authorizing paid
+services. API scopes and wallet limits remain enforced; no automatic retries are
+performed. Preserve result/recovery IDs after ambiguous failures.
+
+`SendRepute.MailKit` 0.1.1 is a .NET 8+ source package for explicit paid
 pre-send classification of `MimeMessage` instances. It wraps an existing
 application-owned `IMailTransport`; it does not install a global hook, open SMTP
 connections, send by itself, or promise inbox placement.
